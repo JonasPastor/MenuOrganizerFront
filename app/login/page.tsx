@@ -28,7 +28,7 @@ export default function LoginPage() {
         <div className="flex size-12 items-center justify-center rounded-xl bg-primary">
           <Leaf className="size-7 text-primary-foreground" />
         </div>
-        <span className="text-2xl font-bold text-foreground">MenuOrganizer</span>
+        <span className="text-2xl font-bold text-foreground">NutriTrack</span>
       </div>
 
       {/* Login Card */}

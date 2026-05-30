@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Calendar,
   ChevronLeft,
@@ -38,8 +38,6 @@ const navItems = [
   { icon: Home, label: "Dashboard", active: true },
   { icon: Calendar, label: "Meal Planner", active: false },
   { icon: UtensilsCrossed, label: "Recipes", active: false },
-  { icon: Target, label: "Goals", active: false },
-  { icon: TrendingUp, label: "Progress", active: false },
   { icon: Settings, label: "Settings", active: false },
 ]
 
@@ -99,7 +97,22 @@ const nutritionStats = [
 
 export default function NutritionDashboard() {
   const [selectedDay, setSelectedDay] = useState("Mon")
+  const [userNombre, setUserNombre] = useState("")
+  const [userApellido, setUserApellido] = useState("")
   const currentWeek = "May 26 - Jun 1"
+
+  useEffect(() => {
+    const storedNombre =
+      sessionStorage.getItem("userNombre") || localStorage.getItem("userNombre") || ""
+    const storedApellido =
+      sessionStorage.getItem("userApellido") || localStorage.getItem("userApellido") || ""
+
+    setUserNombre(storedNombre)
+    setUserApellido(storedApellido)
+  }, [])
+
+  const displayName = [userNombre, userApellido].filter(Boolean).join(" ") || "Usuario"
+  const initials = `${userNombre?.[0] || ""}${userApellido?.[0] || ""}`.toUpperCase() || "U"
 
   return (
     <SidebarProvider>
@@ -138,10 +151,10 @@ export default function NutritionDashboard() {
           <SidebarFooter className="p-4">
             <div className="flex items-center gap-3 rounded-lg bg-sidebar-accent p-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2">
               <div className="flex size-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                JD
+                {initials}
               </div>
               <div className="group-data-[collapsible=icon]:hidden">
-                <p className="text-sm font-medium">Jael Pastor</p>
+                <p className="text-sm font-medium">{displayName}</p>
                 <p className="text-xs text-muted-foreground">Premium Plan</p>
               </div>
             </div>
@@ -155,7 +168,7 @@ export default function NutritionDashboard() {
             <div className="flex items-center gap-3">
               <SidebarTrigger />
               <div>
-                <h1 className="text-base font-semibold leading-tight">Good morning, Jael!</h1>
+                <h1 className="text-base font-semibold leading-tight">Good morning, {displayName}!</h1>
                 <p className="text-xs text-muted-foreground">
                   Track your nutrition
                 </p>
