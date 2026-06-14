@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'NutriTrack - Nutrition Dashboard',
+  title: 'MenuOrganizer - Nutrition Dashboard',
   description: 'Track your nutrition, plan meals, and achieve your health goals',
   generator: 'v0.app',
   icons: {

@@ -7,18 +7,66 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+
+const AUTH_BASE_URL =
+  process.env.NEXT_PUBLIC_AUTH_BASE_URL ?? "http://localhost:8080/api/v1/auth"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    // Handle login logic here
-    setTimeout(() => setIsLoading(false), 1500)
+    setError(null)
+
+    try {
+      const response = await fetch(`${AUTH_BASE_URL}/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      })
+
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(text || "Login failed")
+      }
+
+      const data = await response.json().catch(() => ({}))
+      const jwt = data?.jwt ?? data?.token ?? data?.accessToken
+      if (jwt) {
+        localStorage.setItem("authToken", jwt)
+      }
+
+      const userId = data?.idusuario ?? data?.idUsuario ?? data?.id ?? null
+      localStorage.setItem(
+        "authUser",
+        JSON.stringify({
+          id: userId,
+          nombre: data?.nombre ?? "",
+          apellido: data?.apellido ?? "",
+          email: data?.email ?? email,
+          nacimiento: data?.nacimiento ?? null,
+        })
+      )
+
+      router.push("/")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Login failed"
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -28,7 +76,7 @@ export default function LoginPage() {
         <div className="flex size-12 items-center justify-center rounded-xl bg-primary">
           <Leaf className="size-7 text-primary-foreground" />
         </div>
-        <span className="text-2xl font-bold text-foreground">NutriTrack</span>
+        <span className="text-2xl font-bold text-foreground">MenuOrganizer</span>
       </div>
 
       {/* Login Card */}
@@ -41,6 +89,11 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent className="p-5 pt-4">
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {error}
+              </div>
+            )}
             {/* Email Field */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-xs font-medium">

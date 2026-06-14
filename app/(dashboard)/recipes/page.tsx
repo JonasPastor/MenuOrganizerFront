@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Flame, Plus, Search, Trash2, X, ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,6 +13,7 @@ interface Ingredient {
   id: string
   name: string
   unit: string
+  backendId?: number
 }
 
 interface RecipeIngredient {
@@ -28,53 +29,20 @@ interface Recipe {
   ingredients: RecipeIngredient[]
 }
 
-const initialIngredients: Ingredient[] = [
-  { id: "1", name: "Greek Yogurt", unit: "g" },
-  { id: "2", name: "Mixed Berries", unit: "g" },
-  { id: "3", name: "Honey", unit: "ml" },
-  { id: "4", name: "Granola", unit: "g" },
-  { id: "5", name: "Quinoa", unit: "g" },
-  { id: "6", name: "Olive Oil", unit: "ml" },
-  { id: "7", name: "Salmon Fillet", unit: "g" },
-  { id: "8", name: "Garlic", unit: "g" },
-  { id: "9", name: "Lemon", unit: "pcs" },
-  { id: "10", name: "Chicken Breast", unit: "g" },
-]
-
-const initialRecipes: Recipe[] = [
-  {
-    id: "1",
-    name: "Greek Yogurt Bowl",
-    description: "Creamy yogurt topped with fresh berries, honey, and granola",
-    calories: 350,
-    ingredients: [
-      { ingredientId: "1", quantity: 200 },
-      { ingredientId: "2", quantity: 100 },
-      { ingredientId: "3", quantity: 15 },
-      { ingredientId: "4", quantity: 30 },
-    ],
-  },
-  {
-    id: "2",
-    name: "Grilled Salmon",
-    description: "Herb-crusted salmon fillet with lemon and garlic",
-    calories: 520,
-    ingredients: [
-      { ingredientId: "7", quantity: 200 },
-      { ingredientId: "8", quantity: 10 },
-      { ingredientId: "6", quantity: 15 },
-      { ingredientId: "9", quantity: 1 },
-    ],
-  },
-]
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1"
 
 export default function RecipesPage() {
-  const [ingredients, setIngredients] = useState<Ingredient[]>(initialIngredients)
-  const [recipes, setRecipes] = useState<Recipe[]>(initialRecipes)
+  const [ingredients, setIngredients] = useState<Ingredient[]>([])
+  const [recipes, setRecipes] = useState<Recipe[]>([])
   const [showRecipeForm, setShowRecipeForm] = useState(false)
   const [showIngredientForm, setShowIngredientForm] = useState(false)
   const [showIngredientsList, setShowIngredientsList] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [isLoadingIngredients, setIsLoadingIngredients] = useState(false)
+  const [ingredientsError, setIngredientsError] = useState<string | null>(null)
+  const [isLoadingRecipes, setIsLoadingRecipes] = useState(false)
+  const [recipesError, setRecipesError] = useState<string | null>(null)
   
   const [newRecipe, setNewRecipe] = useState({
     name: "",
@@ -88,6 +56,104 @@ export default function RecipesPage() {
     unit: "g",
   })
 
+  useEffect(() => {
+    const loadIngredients = async () => {
+      setIsLoadingIngredients(true)
+      setIngredientsError(null)
+
+      try {
+        const token = localStorage.getItem("authToken")
+        const response = await fetch(`${API_BASE_URL}/ingrediente`, {
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        })
+
+        if (!response.ok) {
+          const text = await response.text()
+          throw new Error(text || "Failed to load ingredients")
+        }
+
+        const data = (await response.json()) as Array<{
+          id?: number | string
+          ingredienteId?: number | string
+          nombre?: string
+          unidadbase?: string
+        }>
+
+        const normalized = data
+          .filter((item) => item?.nombre)
+          .map((item, index) => {
+            const rawId = item.id ?? item.ingredienteId
+            const parsedId = rawId !== undefined ? Number(rawId) : undefined
+            return {
+              id: rawId ? String(rawId) : `${item.nombre}-${index}`,
+              name: item.nombre ?? "",
+              unit: item.unidadbase ?? "",
+              backendId: Number.isFinite(parsedId) ? parsedId : undefined,
+            }
+          })
+
+        setIngredients(normalized)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load ingredients"
+        setIngredientsError(message)
+      } finally {
+        setIsLoadingIngredients(false)
+      }
+    }
+
+    loadIngredients()
+  }, [])
+
+  useEffect(() => {
+    const loadMenus = async () => {
+      setIsLoadingRecipes(true)
+      setRecipesError(null)
+
+      try {
+        const token = localStorage.getItem("authToken")
+        const response = await fetch(`${API_BASE_URL}/menu`, {
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        })
+
+        if (!response.ok) {
+          const text = await response.text()
+          throw new Error(text || "Failed to load menus")
+        }
+
+        const data = (await response.json()) as Array<{
+          nombre?: string
+          descripcion?: string
+          calorias?: number | string
+        }>
+
+        const normalized = data
+          .filter((item) => item?.nombre)
+          .map((item, index) => ({
+            id: `${item.nombre}-${index}`,
+            name: item.nombre ?? "",
+            description: item.descripcion ?? "",
+            calories: Number(item.calorias) || 0,
+            ingredients: [],
+          }))
+
+        setRecipes(normalized)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load menus"
+        setRecipesError(message)
+      } finally {
+        setIsLoadingRecipes(false)
+      }
+    }
+
+    loadMenus()
+  }, [])
+
   const getIngredientById = (id: string) => ingredients.find((i) => i.id === id)
 
   const filteredRecipes = recipes.filter(
@@ -96,39 +162,143 @@ export default function RecipesPage() {
       recipe.description.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const handleAddIngredient = () => {
+  const handleAddIngredient = async () => {
     if (!newIngredient.name || !newIngredient.unit) return
 
-    const ingredient: Ingredient = {
-      id: Date.now().toString(),
-      name: newIngredient.name,
-      unit: newIngredient.unit,
-    }
+    try {
+      const token = localStorage.getItem("authToken")
+      const response = await fetch(`${API_BASE_URL}/ingrediente`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          nombre: newIngredient.name,
+          unidadbase: newIngredient.unit,
+        }),
+      })
 
-    setIngredients([...ingredients, ingredient])
-    setNewIngredient({ name: "", unit: "g" })
-    setShowIngredientForm(false)
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(text || "Failed to create ingredient")
+      }
+
+        const data = (await response.json()) as {
+          id?: number | string
+          ingredienteId?: number | string
+          nombre?: string
+          unidadbase?: string
+        }
+        const rawId = data.id ?? data.ingredienteId
+        const parsedId = rawId !== undefined ? Number(rawId) : undefined
+      const ingredient: Ingredient = {
+        id: rawId ? String(rawId) : `${data?.nombre ?? newIngredient.name}-${Date.now()}`,
+        name: data?.nombre ?? newIngredient.name,
+        unit: data?.unidadbase ?? newIngredient.unit,
+        backendId: Number.isFinite(parsedId) ? parsedId : undefined,
+      }
+
+      setIngredients((prev) => [...prev, ingredient])
+      setNewIngredient({ name: "", unit: "g" })
+      setShowIngredientForm(false)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to create ingredient"
+      setIngredientsError(message)
+    }
   }
 
   const handleDeleteIngredient = (id: string) => {
     setIngredients(ingredients.filter((i) => i.id !== id))
   }
 
-  const handleAddRecipe = () => {
+  const handleAddRecipe = async () => {
     if (!newRecipe.name || !newRecipe.calories) return
 
-    const recipe: Recipe = {
-      id: Date.now().toString(),
-      name: newRecipe.name,
-      description: newRecipe.description,
-      calories: parseInt(newRecipe.calories) || 0,
-      ingredients: selectedIngredients,
-    }
+    try {
+      const token = localStorage.getItem("authToken")
+      const menuResponse = await fetch(`${API_BASE_URL}/menu`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          nombre: newRecipe.name,
+          descripcion: newRecipe.description,
+          calorias: Number(newRecipe.calories) || 0,
+        }),
+      })
 
-    setRecipes([recipe, ...recipes])
-    setNewRecipe({ name: "", description: "", calories: "" })
-    setSelectedIngredients([])
-    setShowRecipeForm(false)
+      if (!menuResponse.ok) {
+        const text = await menuResponse.text()
+        throw new Error(text || "Failed to create menu")
+      }
+
+      const menuData = (await menuResponse.json().catch(() => ({}))) as {
+        id?: string
+        menuId?: string
+        nombre?: string
+        descripcion?: string
+        calorias?: number | string
+      }
+
+      const menuId = menuData.id ?? menuData.menuId
+      if (!menuId) {
+        throw new Error("Menu created but no menuId returned")
+      }
+
+      if (selectedIngredients.length > 0) {
+        const items = selectedIngredients
+          .map((item) => {
+            const ingredient = ingredients.find((i) => i.id === item.ingredientId)
+            if (!ingredient?.backendId) return null
+            return {
+              ingredienteId: ingredient.backendId,
+              cantidadNecesaria: item.quantity,
+              unidad: ingredient.unit,
+            }
+          })
+          .filter(Boolean)
+
+        if (items.length !== selectedIngredients.length) {
+          throw new Error("Some ingredients are missing backend ids")
+        }
+
+        const relationResponse = await fetch(`${API_BASE_URL}/menuXingrediente`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            menuId,
+            ingredientes: items,
+          }),
+        })
+
+        if (!relationResponse.ok) {
+          const text = await relationResponse.text()
+          throw new Error(text || "Failed to link ingredients")
+        }
+      }
+
+      const recipe: Recipe = {
+        id: String(menuId),
+        name: menuData.nombre ?? newRecipe.name,
+        description: menuData.descripcion ?? newRecipe.description,
+        calories: Number(menuData.calorias) || Number(newRecipe.calories) || 0,
+        ingredients: selectedIngredients,
+      }
+
+      setRecipes((prev) => [recipe, ...prev])
+      setNewRecipe({ name: "", description: "", calories: "" })
+      setSelectedIngredients([])
+      setShowRecipeForm(false)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to create menu"
+      setRecipesError(message)
+    }
   }
 
   const handleDeleteRecipe = (id: string) => {
@@ -211,6 +381,16 @@ export default function RecipesPage() {
             
             {showIngredientsList && (
               <CardContent className="space-y-3 p-3 pt-0">
+                {ingredientsError && (
+                  <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {ingredientsError}
+                  </div>
+                )}
+                {isLoadingIngredients && (
+                  <div className="rounded-md border border-border bg-secondary/30 px-3 py-2 text-xs text-muted-foreground">
+                    Loading ingredients...
+                  </div>
+                )}
                 {/* Add Ingredient Form */}
                 {showIngredientForm && (
                   <div className="rounded-lg border border-primary/50 bg-secondary/30 p-3">
@@ -296,6 +476,17 @@ export default function RecipesPage() {
               className="h-10 pl-9"
             />
           </div>
+
+          {recipesError && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {recipesError}
+            </div>
+          )}
+          {isLoadingRecipes && (
+            <div className="rounded-md border border-border bg-secondary/30 px-3 py-2 text-xs text-muted-foreground">
+              Loading menus...
+            </div>
+          )}
 
           {/* Add Recipe Form */}
           {showRecipeForm && (
