@@ -21,11 +21,11 @@ import { Progress } from "@/components/ui/progress";
 
 interface StockItem {
   id: number;
+  ingredienteId: number;
   ingrediente: string;
   unidad: string;
   cantidadDisponible: number;
   stockMinimo: number;
-  ingredienteId?: number;
 }
 
 interface Ingrediente {
@@ -100,6 +100,7 @@ export default function StocksPage() {
         setStock(
           data.map((item, i) => ({
             id: item.id ?? i,
+            ingredienteId: item.idIngrediente ?? item.id ?? i,
             ingrediente: item.ingrediente ?? "",
             unidad: item.unidad ?? "",
             cantidadDisponible: item.cantidadDisponible ?? 0,
@@ -183,7 +184,7 @@ export default function StocksPage() {
         method: "PUT",
         headers: authHeaders(),
         body: JSON.stringify({
-          idIngrediente: item.id,
+          idIngrediente: item.ingredienteId,
           cantidaddisponible: newQty,
           stockMinimo: item.stockMinimo,
         }),
@@ -219,11 +220,15 @@ export default function StocksPage() {
     const ingredienteId = parseInt(newStock.idIngrediente);
     console.log("ingredienteId:", ingredienteId);
     console.log("newStock:", newStock);
-    if (!ingredienteId || isNaN(ingredienteId) || !newStock.cantidaddisponible){
-      console.log("Validación falló")
+    if (
+      !ingredienteId ||
+      isNaN(ingredienteId) ||
+      !newStock.cantidaddisponible
+    ) {
+      console.log("Validación falló");
       return;
     }
-    
+
     setIsCreating(true);
     setError(null);
     try {
@@ -239,6 +244,7 @@ export default function StocksPage() {
       if (!res.ok) throw new Error("Failed to create stock");
       const created = (await res.json()) as {
         id?: number;
+        idIngrediente?: number;
         ingrediente?: string;
         unidad?: string;
         cantidadDisponible?: number;
@@ -248,6 +254,7 @@ export default function StocksPage() {
         ...prev,
         {
           id: created.id ?? Date.now(),
+          ingredienteId: created.idIngrediente ?? created.id ?? Date.now(), // ← agregar
           ingrediente: created.ingrediente ?? "",
           unidad: created.unidad ?? "",
           cantidadDisponible: created.cantidadDisponible ?? 0,
@@ -303,7 +310,8 @@ export default function StocksPage() {
           onClick={() => setShowCreateForm(true)}
         >
           <Plus className="size-3.5" />
-          <span>Add Stock</span>
+          <span>Update Stock</span>{" "}
+          {/* ← aclarar que es para actualizar, no crear */}
         </Button>
       </header>
 
@@ -352,9 +360,15 @@ export default function StocksPage() {
           {showCreateForm && (
             <Card className="border-primary/50">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-2">
-                <CardTitle className="text-sm font-semibold">
-                  Add Stock
-                </CardTitle>
+                <div>
+                  <CardTitle className="text-sm font-semibold">
+                    Add Stock
+                  </CardTitle>
+                  <p className="text-[10px] text-muted-foreground">
+                    Stock is created automatically when adding ingredients in
+                    Recipes
+                  </p>
+                </div>
                 <Button
                   variant="ghost"
                   size="icon"

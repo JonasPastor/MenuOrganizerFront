@@ -1,136 +1,149 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Flame, Plus, Search, Trash2, X, ChevronDown, ChevronUp } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { SidebarTrigger } from "@/components/ui/sidebar"
+import { useEffect, useState } from "react";
+import {
+  Flame,
+  Plus,
+  Search,
+  Trash2,
+  X,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 interface Ingredient {
-  id: string
-  name: string
-  unit: string
-  backendId?: number
+  id: string;
+  name: string;
+  unit: string;
+  backendId?: number;
 }
 
 interface RecipeIngredient {
-  ingredientId: string
-  quantity: number
+  ingredientId: string;
+  quantity: number;
 }
 
 interface Recipe {
-  id: string
-  name: string
-  description: string
-  calories: number
-  ingredients: RecipeIngredient[]
+  id: string;
+  name: string;
+  description: string;
+  calories: number;
+  ingredients: RecipeIngredient[];
 }
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1"
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
 
 export default function RecipesPage() {
-  const [ingredients, setIngredients] = useState<Ingredient[]>([])
-  const [recipes, setRecipes] = useState<Recipe[]>([])
-  const [showRecipeForm, setShowRecipeForm] = useState(false)
-  const [showIngredientForm, setShowIngredientForm] = useState(false)
-  const [showIngredientsList, setShowIngredientsList] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [isLoadingIngredients, setIsLoadingIngredients] = useState(false)
-  const [ingredientsError, setIngredientsError] = useState<string | null>(null)
-  const [isLoadingRecipes, setIsLoadingRecipes] = useState(false)
-  const [recipesError, setRecipesError] = useState<string | null>(null)
-  
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [showRecipeForm, setShowRecipeForm] = useState(false);
+  const [showIngredientForm, setShowIngredientForm] = useState(false);
+  const [showIngredientsList, setShowIngredientsList] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isLoadingIngredients, setIsLoadingIngredients] = useState(false);
+  const [ingredientsError, setIngredientsError] = useState<string | null>(null);
+  const [isLoadingRecipes, setIsLoadingRecipes] = useState(false);
+  const [recipesError, setRecipesError] = useState<string | null>(null);
+
   const [newRecipe, setNewRecipe] = useState({
     name: "",
     description: "",
     calories: "",
-  })
-  const [selectedIngredients, setSelectedIngredients] = useState<RecipeIngredient[]>([])
-  
+  });
+  const [selectedIngredients, setSelectedIngredients] = useState<
+    RecipeIngredient[]
+  >([]);
+
   const [newIngredient, setNewIngredient] = useState({
     name: "",
     unit: "g",
-  })
+    cantidaddisponible: "",
+    stockMinimo: "",
+  });
 
   useEffect(() => {
     const loadIngredients = async () => {
-      setIsLoadingIngredients(true)
-      setIngredientsError(null)
+      setIsLoadingIngredients(true);
+      setIngredientsError(null);
 
       try {
-        const token = localStorage.getItem("authToken")
+        const token = localStorage.getItem("authToken");
         const response = await fetch(`${API_BASE_URL}/ingrediente`, {
           headers: {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-        })
+        });
 
         if (!response.ok) {
-          const text = await response.text()
-          throw new Error(text || "Failed to load ingredients")
+          const text = await response.text();
+          throw new Error(text || "Failed to load ingredients");
         }
 
         const data = (await response.json()) as Array<{
-          id?: number | string
-          ingredienteId?: number | string
-          nombre?: string
-          unidadbase?: string
-        }>
+          id?: number | string;
+          ingredienteId?: number | string;
+          nombre?: string;
+          unidadbase?: string;
+        }>;
 
         const normalized = data
           .filter((item) => item?.nombre)
           .map((item, index) => {
-            const rawId = item.id ?? item.ingredienteId
-            const parsedId = rawId !== undefined ? Number(rawId) : undefined
+            const rawId = item.id ?? item.ingredienteId;
+            const parsedId = rawId !== undefined ? Number(rawId) : undefined;
             return {
               id: rawId ? String(rawId) : `${item.nombre}-${index}`,
               name: item.nombre ?? "",
               unit: item.unidadbase ?? "",
               backendId: Number.isFinite(parsedId) ? parsedId : undefined,
-            }
-          })
+            };
+          });
 
-        setIngredients(normalized)
+        setIngredients(normalized);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load ingredients"
-        setIngredientsError(message)
+        const message =
+          err instanceof Error ? err.message : "Failed to load ingredients";
+        setIngredientsError(message);
       } finally {
-        setIsLoadingIngredients(false)
+        setIsLoadingIngredients(false);
       }
-    }
+    };
 
-    loadIngredients()
-  }, [])
+    loadIngredients();
+  }, []);
 
   useEffect(() => {
     const loadMenus = async () => {
-      setIsLoadingRecipes(true)
-      setRecipesError(null)
+      setIsLoadingRecipes(true);
+      setRecipesError(null);
 
       try {
-        const token = localStorage.getItem("authToken")
+        const token = localStorage.getItem("authToken");
         const response = await fetch(`${API_BASE_URL}/menu`, {
           headers: {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-        })
+        });
 
         if (!response.ok) {
-          const text = await response.text()
-          throw new Error(text || "Failed to load menus")
+          const text = await response.text();
+          throw new Error(text || "Failed to load menus");
         }
 
         const data = (await response.json()) as Array<{
-          nombre?: string
-          descripcion?: string
-          calorias?: number | string
-        }>
+          nombre?: string;
+          descripcion?: string;
+          calorias?: number | string;
+        }>;
 
         const normalized = data
           .filter((item) => item?.nombre)
@@ -140,33 +153,34 @@ export default function RecipesPage() {
             description: item.descripcion ?? "",
             calories: Number(item.calorias) || 0,
             ingredients: [],
-          }))
+          }));
 
-        setRecipes(normalized)
+        setRecipes(normalized);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to load menus"
-        setRecipesError(message)
+        const message =
+          err instanceof Error ? err.message : "Failed to load menus";
+        setRecipesError(message);
       } finally {
-        setIsLoadingRecipes(false)
+        setIsLoadingRecipes(false);
       }
-    }
+    };
 
-    loadMenus()
-  }, [])
+    loadMenus();
+  }, []);
 
-  const getIngredientById = (id: string) => ingredients.find((i) => i.id === id)
+  const getIngredientById = (id: string) =>
+    ingredients.find((i) => i.id === id);
 
   const filteredRecipes = recipes.filter(
     (recipe) =>
       recipe.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recipe.description.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+      recipe.description.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
   const handleAddIngredient = async () => {
-    if (!newIngredient.name || !newIngredient.unit) return
-
+    if (!newIngredient.name || !newIngredient.unit) return;
     try {
-      const token = localStorage.getItem("authToken")
+      const token = localStorage.getItem("authToken");
       const response = await fetch(`${API_BASE_URL}/ingrediente`, {
         method: "POST",
         headers: {
@@ -176,47 +190,52 @@ export default function RecipesPage() {
         body: JSON.stringify({
           nombre: newIngredient.name,
           unidadbase: newIngredient.unit,
+          cantidaddisponible: Number(newIngredient.cantidaddisponible) || 0,
+          stockMinimo: Number(newIngredient.stockMinimo) || 0,
         }),
-      })
-
+      });
       if (!response.ok) {
-        const text = await response.text()
-        throw new Error(text || "Failed to create ingredient")
+        const text = await response.text();
+        throw new Error(text || "Failed to create ingredient");
       }
-
-        const data = (await response.json()) as {
-          id?: number | string
-          ingredienteId?: number | string
-          nombre?: string
-          unidadbase?: string
-        }
-        const rawId = data.id ?? data.ingredienteId
-        const parsedId = rawId !== undefined ? Number(rawId) : undefined
+      const data = (await response.json()) as {
+        id?: number;
+        nombre?: string;
+        unidadbase?: string;
+      };
+      const rawId = data.id;
       const ingredient: Ingredient = {
-        id: rawId ? String(rawId) : `${data?.nombre ?? newIngredient.name}-${Date.now()}`,
+        id: rawId
+          ? String(rawId)
+          : `${data?.nombre ?? newIngredient.name}-${Date.now()}`,
         name: data?.nombre ?? newIngredient.name,
         unit: data?.unidadbase ?? newIngredient.unit,
-        backendId: Number.isFinite(parsedId) ? parsedId : undefined,
-      }
-
-      setIngredients((prev) => [...prev, ingredient])
-      setNewIngredient({ name: "", unit: "g" })
-      setShowIngredientForm(false)
+        backendId: rawId,
+      };
+      setIngredients((prev) => [...prev, ingredient]);
+      setNewIngredient({
+        name: "",
+        unit: "g",
+        cantidaddisponible: "",
+        stockMinimo: "",
+      });
+      setShowIngredientForm(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to create ingredient"
-      setIngredientsError(message)
+      setIngredientsError(
+        err instanceof Error ? err.message : "Failed to create ingredient",
+      );
     }
-  }
+  };
 
   const handleDeleteIngredient = (id: string) => {
-    setIngredients(ingredients.filter((i) => i.id !== id))
-  }
+    setIngredients(ingredients.filter((i) => i.id !== id));
+  };
 
   const handleAddRecipe = async () => {
-    if (!newRecipe.name || !newRecipe.calories) return
+    if (!newRecipe.name || !newRecipe.calories) return;
 
     try {
-      const token = localStorage.getItem("authToken")
+      const token = localStorage.getItem("authToken");
       const menuResponse = await fetch(`${API_BASE_URL}/menu`, {
         method: "POST",
         headers: {
@@ -228,58 +247,63 @@ export default function RecipesPage() {
           descripcion: newRecipe.description,
           calorias: Number(newRecipe.calories) || 0,
         }),
-      })
+      });
 
       if (!menuResponse.ok) {
-        const text = await menuResponse.text()
-        throw new Error(text || "Failed to create menu")
+        const text = await menuResponse.text();
+        throw new Error(text || "Failed to create menu");
       }
 
       const menuData = (await menuResponse.json().catch(() => ({}))) as {
-        id?: string
-        menuId?: string
-        nombre?: string
-        descripcion?: string
-        calorias?: number | string
-      }
+        id?: string;
+        menuId?: string;
+        nombre?: string;
+        descripcion?: string;
+        calorias?: number | string;
+      };
 
-      const menuId = menuData.id ?? menuData.menuId
+      const menuId = menuData.id ?? menuData.menuId;
       if (!menuId) {
-        throw new Error("Menu created but no menuId returned")
+        throw new Error("Menu created but no menuId returned");
       }
 
       if (selectedIngredients.length > 0) {
         const items = selectedIngredients
           .map((item) => {
-            const ingredient = ingredients.find((i) => i.id === item.ingredientId)
-            if (!ingredient?.backendId) return null
+            const ingredient = ingredients.find(
+              (i) => i.id === item.ingredientId,
+            );
+            if (!ingredient?.backendId) return null;
             return {
               ingredienteId: ingredient.backendId,
               cantidadNecesaria: item.quantity,
               unidad: ingredient.unit,
-            }
+            };
           })
-          .filter(Boolean)
+          .filter(Boolean);
 
         if (items.length !== selectedIngredients.length) {
-          throw new Error("Some ingredients are missing backend ids")
+          throw new Error("Some ingredients are missing backend ids");
         }
 
-        const relationResponse = await fetch(`${API_BASE_URL}/menuXingrediente`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        const relationResponse = await fetch(
+          `${API_BASE_URL}/menuXingrediente`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({
+              menuId,
+              ingredientes: items,
+            }),
           },
-          body: JSON.stringify({
-            menuId,
-            ingredientes: items,
-          }),
-        })
+        );
 
         if (!relationResponse.ok) {
-          const text = await relationResponse.text()
-          throw new Error(text || "Failed to link ingredients")
+          const text = await relationResponse.text();
+          throw new Error(text || "Failed to link ingredients");
         }
       }
 
@@ -289,38 +313,48 @@ export default function RecipesPage() {
         description: menuData.descripcion ?? newRecipe.description,
         calories: Number(menuData.calorias) || Number(newRecipe.calories) || 0,
         ingredients: selectedIngredients,
-      }
+      };
 
-      setRecipes((prev) => [recipe, ...prev])
-      setNewRecipe({ name: "", description: "", calories: "" })
-      setSelectedIngredients([])
-      setShowRecipeForm(false)
+      setRecipes((prev) => [recipe, ...prev]);
+      setNewRecipe({ name: "", description: "", calories: "" });
+      setSelectedIngredients([]);
+      setShowRecipeForm(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to create menu"
-      setRecipesError(message)
+      const message =
+        err instanceof Error ? err.message : "Failed to create menu";
+      setRecipesError(message);
     }
-  }
+  };
 
   const handleDeleteRecipe = (id: string) => {
-    setRecipes(recipes.filter((r) => r.id !== id))
-  }
+    setRecipes(recipes.filter((r) => r.id !== id));
+  };
 
   const handleAddIngredientToRecipe = (ingredientId: string) => {
-    if (selectedIngredients.find((i) => i.ingredientId === ingredientId)) return
-    setSelectedIngredients([...selectedIngredients, { ingredientId, quantity: 100 }])
-  }
+    if (selectedIngredients.find((i) => i.ingredientId === ingredientId))
+      return;
+    setSelectedIngredients([
+      ...selectedIngredients,
+      { ingredientId, quantity: 100 },
+    ]);
+  };
 
-  const handleUpdateIngredientQuantity = (ingredientId: string, quantity: number) => {
+  const handleUpdateIngredientQuantity = (
+    ingredientId: string,
+    quantity: number,
+  ) => {
     setSelectedIngredients(
       selectedIngredients.map((i) =>
-        i.ingredientId === ingredientId ? { ...i, quantity } : i
-      )
-    )
-  }
+        i.ingredientId === ingredientId ? { ...i, quantity } : i,
+      ),
+    );
+  };
 
   const handleRemoveIngredientFromRecipe = (ingredientId: string) => {
-    setSelectedIngredients(selectedIngredients.filter((i) => i.ingredientId !== ingredientId))
-  }
+    setSelectedIngredients(
+      selectedIngredients.filter((i) => i.ingredientId !== ingredientId),
+    );
+  };
 
   return (
     <main className="flex flex-1 flex-col overflow-hidden">
@@ -350,7 +384,7 @@ export default function RecipesPage() {
         <div className="mx-auto max-w-7xl space-y-4">
           {/* Ingredients Management Section */}
           <Card className="border-border">
-            <CardHeader 
+            <CardHeader
               className="flex cursor-pointer flex-row items-center justify-between space-y-0 p-3"
               onClick={() => setShowIngredientsList(!showIngredientsList)}
             >
@@ -363,9 +397,9 @@ export default function RecipesPage() {
                   variant="outline"
                   className="h-7 gap-1 px-2 text-xs"
                   onClick={(e) => {
-                    e.stopPropagation()
-                    setShowIngredientForm(true)
-                    setShowIngredientsList(true)
+                    e.stopPropagation();
+                    setShowIngredientForm(true);
+                    setShowIngredientsList(true);
                   }}
                 >
                   <Plus className="size-3" />
@@ -378,7 +412,7 @@ export default function RecipesPage() {
                 )}
               </div>
             </CardHeader>
-            
+
             {showIngredientsList && (
               <CardContent className="space-y-3 p-3 pt-0">
                 {ingredientsError && (
@@ -395,7 +429,9 @@ export default function RecipesPage() {
                 {showIngredientForm && (
                   <div className="rounded-lg border border-primary/50 bg-secondary/30 p-3">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-xs font-medium">Add New Ingredient</span>
+                      <span className="text-xs font-medium">
+                        Add New Ingredient
+                      </span>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -405,38 +441,85 @@ export default function RecipesPage() {
                         <X className="size-3" />
                       </Button>
                     </div>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Name (e.g., Chicken)"
-                        value={newIngredient.name}
-                        onChange={(e) =>
-                          setNewIngredient({ ...newIngredient, name: e.target.value })
-                        }
-                        className="h-9 flex-1"
-                      />
-                      <select
-                        value={newIngredient.unit}
-                        onChange={(e) =>
-                          setNewIngredient({ ...newIngredient, unit: e.target.value })
-                        }
-                        className="h-9 w-20 rounded-md border border-input bg-background px-2 text-xs"
-                      >
-                        <option value="g">g</option>
-                        <option value="kg">kg</option>
-                        <option value="ml">ml</option>
-                        <option value="l">l</option>
-                        <option value="pcs">pcs</option>
-                        <option value="tbsp">tbsp</option>
-                        <option value="tsp">tsp</option>
-                        <option value="cup">cup</option>
-                      </select>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Name (e.g., Chicken)"
+                          value={newIngredient.name}
+                          onChange={(e) =>
+                            setNewIngredient({
+                              ...newIngredient,
+                              name: e.target.value,
+                            })
+                          }
+                          className="h-9 flex-1"
+                        />
+                        <select
+                          value={newIngredient.unit}
+                          onChange={(e) =>
+                            setNewIngredient({
+                              ...newIngredient,
+                              unit: e.target.value,
+                            })
+                          }
+                          className="h-9 w-20 rounded-md border border-input bg-background px-2 text-xs"
+                        >
+                          <option value="g">g</option>
+                          <option value="kg">kg</option>
+                          <option value="ml">ml</option>
+                          <option value="l">l</option>
+                          <option value="pcs">pcs</option>
+                          <option value="tbsp">tbsp</option>
+                          <option value="tsp">tsp</option>
+                          <option value="cup">cup</option>
+                        </select>
+                      </div>
+                      {/* ← Campos nuevos de stock */}
+                      <div className="flex gap-2">
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">
+                            Initial stock
+                          </Label>
+                          <Input
+                            type="number"
+                            placeholder="e.g., 500"
+                            value={newIngredient.cantidaddisponible}
+                            onChange={(e) =>
+                              setNewIngredient({
+                                ...newIngredient,
+                                cantidaddisponible: e.target.value,
+                              })
+                            }
+                            className="h-9"
+                            min={0}
+                          />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">
+                            Minimum stock
+                          </Label>
+                          <Input
+                            type="number"
+                            placeholder="e.g., 100"
+                            value={newIngredient.stockMinimo}
+                            onChange={(e) =>
+                              setNewIngredient({
+                                ...newIngredient,
+                                stockMinimo: e.target.value,
+                              })
+                            }
+                            className="h-9"
+                            min={0}
+                          />
+                        </div>
+                      </div>
                       <Button
                         size="sm"
-                        className="h-9"
+                        className="h-9 w-full"
                         onClick={handleAddIngredient}
                         disabled={!newIngredient.name}
                       >
-                        Add
+                        Add Ingredient
                       </Button>
                     </div>
                   </div>
@@ -492,14 +575,16 @@ export default function RecipesPage() {
           {showRecipeForm && (
             <Card className="border-primary/50">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-2">
-                <CardTitle className="text-sm font-semibold">New Recipe</CardTitle>
+                <CardTitle className="text-sm font-semibold">
+                  New Recipe
+                </CardTitle>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="size-6"
                   onClick={() => {
-                    setShowRecipeForm(false)
-                    setSelectedIngredients([])
+                    setShowRecipeForm(false);
+                    setSelectedIngredients([]);
                   }}
                 >
                   <X className="size-3.5" />
@@ -530,7 +615,10 @@ export default function RecipesPage() {
                     placeholder="Brief description of the recipe..."
                     value={newRecipe.description}
                     onChange={(e) =>
-                      setNewRecipe({ ...newRecipe, description: e.target.value })
+                      setNewRecipe({
+                        ...newRecipe,
+                        description: e.target.value,
+                      })
                     }
                     className="min-h-[80px] resize-none"
                   />
@@ -555,13 +643,13 @@ export default function RecipesPage() {
                 {/* Ingredient Selection */}
                 <div className="space-y-2">
                   <Label className="text-xs">Ingredients</Label>
-                  
+
                   {/* Selected Ingredients */}
                   {selectedIngredients.length > 0 && (
                     <div className="space-y-2 rounded-lg bg-secondary/30 p-2">
                       {selectedIngredients.map((ri) => {
-                        const ingredient = getIngredientById(ri.ingredientId)
-                        if (!ingredient) return null
+                        const ingredient = getIngredientById(ri.ingredientId);
+                        if (!ingredient) return null;
                         return (
                           <div
                             key={ri.ingredientId}
@@ -576,7 +664,7 @@ export default function RecipesPage() {
                               onChange={(e) =>
                                 handleUpdateIngredientQuantity(
                                   ri.ingredientId,
-                                  parseInt(e.target.value) || 0
+                                  parseInt(e.target.value) || 0,
                                 )
                               }
                               className="h-8 w-20 text-xs"
@@ -589,13 +677,15 @@ export default function RecipesPage() {
                               size="icon"
                               className="size-6"
                               onClick={() =>
-                                handleRemoveIngredientFromRecipe(ri.ingredientId)
+                                handleRemoveIngredientFromRecipe(
+                                  ri.ingredientId,
+                                )
                               }
                             >
                               <X className="size-3" />
                             </Button>
                           </div>
-                        )
+                        );
                       })}
                     </div>
                   )}
@@ -605,12 +695,16 @@ export default function RecipesPage() {
                     {ingredients
                       .filter(
                         (i) =>
-                          !selectedIngredients.find((si) => si.ingredientId === i.id)
+                          !selectedIngredients.find(
+                            (si) => si.ingredientId === i.id,
+                          ),
                       )
                       .map((ingredient) => (
                         <button
                           key={ingredient.id}
-                          onClick={() => handleAddIngredientToRecipe(ingredient.id)}
+                          onClick={() =>
+                            handleAddIngredientToRecipe(ingredient.id)
+                          }
                           className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs active:bg-primary active:text-primary-foreground"
                         >
                           <Plus className="size-3" />
@@ -620,7 +714,8 @@ export default function RecipesPage() {
                   </div>
                   {ingredients.length === 0 && (
                     <p className="text-xs text-muted-foreground">
-                      No ingredients available. Add some in the Ingredients Library above.
+                      No ingredients available. Add some in the Ingredients
+                      Library above.
                     </p>
                   )}
                 </div>
@@ -673,16 +768,19 @@ export default function RecipesPage() {
                         {recipe.ingredients.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-1">
                             {recipe.ingredients.slice(0, 4).map((ri) => {
-                              const ingredient = getIngredientById(ri.ingredientId)
-                              if (!ingredient) return null
+                              const ingredient = getIngredientById(
+                                ri.ingredientId,
+                              );
+                              if (!ingredient) return null;
                               return (
                                 <span
                                   key={ri.ingredientId}
                                   className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] text-secondary-foreground"
                                 >
-                                  {ri.quantity}{ingredient.unit} {ingredient.name}
+                                  {ri.quantity}
+                                  {ingredient.unit} {ingredient.name}
                                 </span>
-                              )
+                              );
                             })}
                             {recipe.ingredients.length > 4 && (
                               <span className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
@@ -709,5 +807,5 @@ export default function RecipesPage() {
         </div>
       </div>
     </main>
-  )
+  );
 }
